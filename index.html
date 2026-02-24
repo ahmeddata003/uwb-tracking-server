@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UWB Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://<VM_IP_ADDRESS>:5000');
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server');
+        });
+        socket.on('mqtt_data', (data) => {
+            console.log('Received MQTT data:', data);
+            window.mqttData = data; // Set global variable for Pygame
+        });
+    </script>
+</head>
+<body>
+    <canvas id="pygame"></canvas>
+    <script type="text/python" src="main.py"></script>
+</body>
+</html>

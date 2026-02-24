@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>UWB Indoor Position Tracking System Guide</title>
+    <style>
+        @media print {
+            body { font-size: 11pt; }
+            pre { font-size: 9pt; }
+            h1 { page-break-before: always; }
+            h1:first-of-type { page-break-before: avoid; }
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #333;
+            background: #fff;
+        }
+        
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        
+        h2 {
+            color: #1e40af;
+            margin-top: 30px;
+        }
+        
+        h3 {
+            color: #3730a3;
+        }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #dc2626;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: #e2e8f0;
+        }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        th {
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #e2e8f0;
+            margin: 30px 0;
+        }
+        
+        blockquote {
+            border-left: 4px solid #2563eb;
+            padding-left: 20px;
+            margin-left: 0;
+            color: #64748b;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            color: white;
+            border-radius: 12px;
+        }
+        
+        .header h1 {
+            color: white;
+            border: none;
+            margin: 0;
+            font-size: 2.5em;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛰️ UWB Indoor Position Tracking System</h1>
+        <p>Complete System Documentation & Setup Guide</p>
+    </div>
+    
+    <h1>🛰️ UWB Indoor Position Tracking System</h1>
+
+<h2>Simple Guide for Everyone</h2>
+
+<hr />
+
+<h1>What is This System?</h1>
+
+<p>This system tracks the <strong>real-time location of people or objects inside a room</strong> using UWB (Ultra-Wideband) technology.</p>
+
+<h3>Think of it like GPS, but for indoors!</h3>
+
+<pre><code>    ┌────────────────────────────────────────────┐
+    │                  ROOM                       │
+    │                                             │
+    │  📍A3                              📍A2     │
+    │   (Anchor)                      (Anchor)    │
+    │                                             │
+    │                                             │
+    │              🏃 Person                      │
+    │              with Tag                       │
+    │                                             │
+    │                                             │
+    │  📍A0                              📍A1     │
+    │   (Anchor)                      (Anchor)    │
+    │                                             │
+    └────────────────────────────────────────────┘
+</code></pre>
+
+<hr />
+
+<h1>Key Components</h1>
+
+<h2>1️⃣ Anchors (Fixed Devices)</h2>
+
+<ul>
+<li><strong>What</strong>: Small devices mounted at room corners</li>
+<li><strong>Quantity</strong>: 4 anchors per room (A0, A1, A2, A3)</li>
+<li><strong>Purpose</strong>: Reference points with known positions</li>
+</ul>
+
+<h2>2️⃣ Tags (Mobile Devices)</h2>
+
+<ul>
+<li><strong>What</strong>: Small devices worn by people or attached to objects</li>
+<li><strong>Quantity</strong>: Can track multiple tags simultaneously</li>
+<li><strong>Purpose</strong>: The thing being tracked</li>
+</ul>
+
+<h2>3️⃣ Server (This System)</h2>
+
+<ul>
+<li><strong>What</strong>: Cloud computer at <code>15.204.231.252</code></li>
+<li><strong>Purpose</strong>: Receives data, calculates positions, shows on screen</li>
+</ul>
+
+<hr />
+
+<h1>How Does It Work?</h1>
+
+<h2>Step-by-Step Process</h2>
+
+<pre><code>STEP 1: Tag measures distance to each anchor
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+         A3 ─────────────────── A2
+          │         120 inches   │
+          │            ↗         │
+     95   │         📱          │  110
+   inches │        (Tag)        │ inches
+          │            ↘         │
+          │         100 inches   │
+         A0 ─────────────────── A1
+
+
+STEP 2: Tag sends distances to server via WiFi/MQTT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    📱 Tag  ──────►  📡 MQTT Broker  ──────►  💻 Server
+
+    Message: {"id": 0, "range": [100, 110, 120, 95, 0, 0, 0, 0]}
+                                ↑    ↑    ↑   ↑
+                               A0   A1   A2  A3
+
+
+STEP 3: Server calculates exact position
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Using math (trilateration), server finds X,Y position
+
+    Result: Tag is at position (250, 180) inches from corner A0
+
+
+STEP 4: Position shown on screen/app
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    ┌─────────────────────────┐
+    │ 🖥️ Live Visualization   │
+    │                         │
+    │    A3 ──────────── A2   │
+    │     │              │    │
+    │     │    🔴 Tag 0  │    │
+    │     │        🔵 Tag 1   │
+    │     │              │    │
+    │    A0 ──────────── A1   │
+    │                         │
+    └─────────────────────────┘
+</code></pre>
+
+<hr />
+
+<h1>System Architecture</h1>
+
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│                         COMPLETE SYSTEM                          │
+└─────────────────────────────────────────────────────────────────┘
+
+  ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+  │  Anchor  │     │  Anchor  │     │  Anchor  │     │  Anchor  │
+  │    A0    │     │    A1    │     │    A2    │     │    A3    │
+  └────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘
+       │                │                │                │
+       └────────────────┴────────────────┴────────────────┘
+                                │
+                         UWB Signals
+                                │
+                                ▼
+                        ┌──────────────┐
+                        │     TAG      │
+                        │   (Mobile)   │
+                        └──────┬───────┘
+                               │
+                          WiFi/MQTT
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                      CLOUD SERVER                                 │
+│                    15.204.231.252                                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               │
+│  │    MQTT     │  │   MongoDB   │  │  Position   │               │
+│  │   Broker    │─▶│  Database   │─▶│ Calculator  │               │
+│  │  Port 1883  │  │             │  │             │               │
+│  └─────────────┘  └─────────────┘  └──────┬──────┘               │
+│                                           │                       │
+│                                           ▼                       │
+│                                   ┌─────────────┐                 │
+│                                   │  WebSocket  │                 │
+│                                   │  Real-Time  │                 │
+│                                   │   Updates   │                 │
+│                                   └──────┬──────┘                 │
+└──────────────────────────────────────────┼───────────────────────┘
+                                           │
+                                           ▼
+                    ┌──────────────────────────────────────┐
+                    │         📱 Mobile App / 🖥️ Web       │
+                    │         Real-Time Tracking View      │
+                    └──────────────────────────────────────┘
+</code></pre>
+
+<hr />
+
+<h1>Data Message Format</h1>
+
+<h2>What the Tag Sends:</h2>
+
+<div class="codehilite">
+<pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;range&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="mi">110</span><span class="p">,</span><span class="w"> </span><span class="mi">120</span><span class="p">,</span><span class="w"> </span><span class="mi">95</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<table>
+<thead>
+<tr>
+  <th>Field</th>
+  <th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>id</code></td>
+  <td>Tag number (0, 1, 2, etc.)</td>
+</tr>
+<tr>
+  <td><code>range[0]</code></td>
+  <td>Distance to Anchor A0 (inches)</td>
+</tr>
+<tr>
+  <td><code>range[1]</code></td>
+  <td>Distance to Anchor A1 (inches)</td>
+</tr>
+<tr>
+  <td><code>range[2]</code></td>
+  <td>Distance to Anchor A2 (inches)</td>
+</tr>
+<tr>
+  <td><code>range[3]</code></td>
+  <td>Distance to Anchor A3 (inches)</td>
+</tr>
+<tr>
+  <td><code>range[4-7]</code></td>
+  <td>Reserved (set to 0)</td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Quick Setup Guide</h1>
+
+<h2>For Device/Hardware Team</h2>
+
+<h3>MQTT Connection Settings:</h3>
+
+<table>
+<thead>
+<tr>
+  <th>Setting</th>
+  <th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Broker IP</strong></td>
+  <td><code>15.204.231.252</code></td>
+</tr>
+<tr>
+  <td><strong>Port</strong></td>
+  <td><code>1883</code></td>
+</tr>
+<tr>
+  <td><strong>Username</strong></td>
+  <td><code>taha</code></td>
+</tr>
+<tr>
+  <td><strong>Password</strong></td>
+  <td><code>taha</code></td>
+</tr>
+<tr>
+  <td><strong>Topic</strong></td>
+  <td>Your 7-digit ID (e.g., <code>1000001</code>)</td>
+</tr>
+</tbody>
+</table>
+
+<h3>Message to Publish:</h3>
+
+<pre><code>Topic: 1000001
+Message: {"id": 0, "range": [100, 110, 120, 95, 0, 0, 0, 0]}
+</code></pre>
+
+<hr />
+
+<h2>For App/Software Team</h2>
+
+<h3>API Server: <code>http://15.204.231.252</code></h3>
+
+<h3>Basic API Flow:</h3>
+
+<pre><code>1. SIGNUP    →  POST /api/signup     →  Create account
+2. LOGIN     →  POST /api/login      →  Get token
+3. ENROLL    →  POST /api/enrollment →  Register device
+4. ROOM      →  POST /api/rooms      →  Create room
+5. VISUALIZE →  POST /api/visualize  →  Get positions!
+</code></pre>
+
+<p><strong>After login:</strong> Call <strong>GET /api/enrollments</strong> and <strong>GET /api/rooms</strong> and build the UI from that response so the user's topics and room IDs are preserved across re-login and app restarts.</p>
+
+<h3>WebSocket (Real-Time):</h3>
+
+<pre><code>URL: ws://15.204.231.252:8000
+
+1. Connect with token
+2. Send: start_visualization
+3. Receive: position_update (every 0.5 seconds)
+</code></pre>
+
+<hr />
+
+<h1>Room Setup</h1>
+
+<h2>Measuring Your Room</h2>
+
+<pre><code>    A3 ─────────────────────────────── A2
+    │                                   │
+    │         Measure these             │
+    │         four distances:           │
+    │                                   │
+    │  A3-A0    Your Room      A2-A1    │
+    │  (left)                  (right)  │
+    │                                   │
+    │                                   │
+    A0 ─────────────────────────────── A1
+              A0-A1 (bottom)
+              A2-A3 (top)
+</code></pre>
+
+<h3>Room Registration:</h3>
+
+<table>
+<thead>
+<tr>
+  <th>Field</th>
+  <th>Description</th>
+  <th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>A0_A1</code></td>
+  <td>Bottom wall length (inches)</td>
+  <td><code>800</code></td>
+</tr>
+<tr>
+  <td><code>A1_A2</code></td>
+  <td>Right wall length (inches)</td>
+  <td><code>600</code></td>
+</tr>
+<tr>
+  <td><code>A2_A3</code></td>
+  <td>Top wall length (inches)</td>
+  <td><code>800</code></td>
+</tr>
+<tr>
+  <td><code>A3_A0</code></td>
+  <td>Left wall length (inches)</td>
+  <td><code>600</code></td>
+</tr>
+<tr>
+  <td><code>label</code></td>
+  <td>Room name</td>
+  <td><code>"Living Room"</code></td>
+</tr>
+<tr>
+  <td><code>mqtt_topic</code></td>
+  <td>Device ID</td>
+  <td><code>"1000001"</code></td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Position Output</h1>
+
+<h2>What You Get Back:</h2>
+
+<div class="codehilite">
+<pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;room_dimensions_in&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;width_in&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">800</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;height_in&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">600</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;anchor_positions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;A0&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;A1&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">800</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;A2&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">800</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">600</span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;A3&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">600</span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;tag_positions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;0&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">250</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">180</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;x_normalized&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.31</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;y_normalized&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.30</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;1&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">520</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">400</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;x_normalized&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.65</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;y_normalized&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.67</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<h3>Understanding Positions:</h3>
+
+<table>
+<thead>
+<tr>
+  <th>Field</th>
+  <th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>x</code>, <code>y</code></td>
+  <td>Position in inches from A0 corner</td>
+</tr>
+<tr>
+  <td><code>x_normalized</code></td>
+  <td>Position as % of width (0.0 to 1.0)</td>
+</tr>
+<tr>
+  <td><code>y_normalized</code></td>
+  <td>Position as % of height (0.0 to 1.0)</td>
+</tr>
+<tr>
+  <td><code>status</code></td>
+  <td><code>true</code> = valid position, <code>false</code> = error</td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Coordinate System</h1>
+
+<pre><code>    (0, 600)                    (800, 600)
+        A3 ─────────────────────── A2
+        │                           │
+        │     Y increases ↑         │
+        │                           │
+        │         X increases →     │
+        │                           │
+        │                           │
+        A0 ─────────────────────── A1
+    (0, 0)                      (800, 0)
+
+
+    Origin (0,0) is at A0 (bottom-left corner)
+</code></pre>
+
+<hr />
+
+<h1>Common Questions</h1>
+
+<h2>Q: How accurate is the tracking?</h2>
+
+<p><strong>A:</strong> UWB technology is accurate to within a few inches (typically 10-30cm).</p>
+
+<h2>Q: How many tags can I track?</h2>
+
+<p><strong>A:</strong> The system can track multiple tags simultaneously. Each tag has a unique ID (0, 1, 2, etc.).</p>
+
+<h2>Q: What if a tag goes out of range?</h2>
+
+<p><strong>A:</strong> The tag's <code>status</code> will be <code>false</code> and position won't be updated.</p>
+
+<h2>Q: Can I track in multiple rooms?</h2>
+
+<p><strong>A:</strong> Yes! Create separate rooms with different <code>mqtt_topic</code> values.</p>
+
+<h2>Q: How fast are updates?</h2>
+
+<p><strong>A:</strong> WebSocket provides updates every 0.5 seconds (configurable).</p>
+
+<hr />
+
+<h1>Troubleshooting</h1>
+
+<table>
+<thead>
+<tr>
+  <th>Problem</th>
+  <th>Check This</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>No position data</td>
+  <td>Is MQTT publishing? Check <code>topic</code> matches</td>
+</tr>
+<tr>
+  <td>Position seems wrong</td>
+  <td>Verify room dimensions in inches</td>
+</tr>
+<tr>
+  <td>Can't connect to API</td>
+  <td>Check token, verify server is online</td>
+</tr>
+<tr>
+  <td>WebSocket disconnects</td>
+  <td>Token may have expired, re-login</td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h1>Contact &amp; Support</h1>
+
+<p><strong>Server IP:</strong> <code>15.204.231.252</code></p>
+
+<p><strong>API Documentation:</strong> See <code>API_DOCUMENTATION.md</code></p>
+
+<p><strong>Postman Collection:</strong> See <code>UWB_Tracking_API.postman_collection.json</code></p>
+
+<hr />
+
+<p><em>Document Version: 1.0</em>
+<em>Last Updated: January 2026</em></p>
+
+    
+    <div style="margin-top: 50px; padding-top: 20px; border-top: 2px solid #e2e8f0; text-align: center; color: #64748b;">
+        <p>📄 This document can be printed to PDF using your browser's Print function (Ctrl+P / Cmd+P)</p>
+        <p>Select "Save as PDF" as the destination</p>
+    </div>
+</body>
+</html>

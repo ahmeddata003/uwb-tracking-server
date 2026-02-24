@@ -1,0 +1,460 @@
+{
+  "info": {
+    "name": "UWB Position Tracking API",
+    "description": "Complete API collection for UWB Position Tracking System.\n\n## Server Info\n- **Base URL**: http://15.204.231.252\n- **WebSocket URL**: ws://15.204.231.252:8000\n\n## Authentication\nAll protected endpoints require JWT token in Authorization header.\n\n## Quick Start\n1. Run 'Sign Up' to create account\n2. Run 'Login' to get JWT token\n3. Token auto-saved to collection variable\n4. Use other endpoints with auto-attached token",
+    "_postman_id": "uwb-tracking-api-v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "base_url", "value": "http://15.204.231.252", "type": "string"},
+    {"key": "ws_url", "value": "ws://15.204.231.252:8000", "type": "string"},
+    {"key": "token", "value": "", "type": "string"},
+    {"key": "test_email", "value": "testuser@example.com", "type": "string"},
+    {"key": "test_password", "value": "Test@123456", "type": "string"},
+    {"key": "mqtt_topic", "value": "", "type": "string"},
+    {"key": "room_id", "value": "", "type": "string"}
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "description": "User authentication endpoints",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{base_url}}/", "host": ["{{base_url}}"], "path": [""]}
+          },
+          "response": []
+        },
+        {
+          "name": "Sign Up",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    console.log('User registered successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Test User\",\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/signup", "host": ["{{base_url}}"], "path": ["api", "signup"]},
+            "description": "Register a new user account.\n\n**Required Fields:**\n- name: User's full name\n- email: Valid email address\n- password: Strong password\n\n**Response:** 201 on success"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('token', jsonData.token);",
+                  "        console.log('Token saved:', jsonData.token.substring(0, 50) + '...');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/login", "host": ["{{base_url}}"], "path": ["api", "login"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Token",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/verify", "host": ["{{base_url}}"], "path": ["api", "verify"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Get Config Mode",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/config_mode", "host": ["{{base_url}}"], "path": ["api", "config_mode"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Device Enrollment",
+      "description": "Manage device enrollments",
+      "item": [
+        {
+          "name": "Enroll Device",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var body = JSON.parse(pm.request.body.raw);",
+                  "    pm.collectionVariables.set('mqtt_topic', body.mqtt_topic);",
+                  "    console.log('MQTT topic saved:', body.mqtt_topic);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "{{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"mqtt_topic\": \"1000099\",\n    \"broker\": \"test.mosquitto.org\",\n    \"server_ip\": \"15.204.231.252\",\n    \"mqtt_username\": \"testuser\",\n    \"mqtt_password\": \"testpass\",\n    \"port\": \"1883\",\n    \"mobile_ssid\": \"MyWiFi\",\n    \"mobile_passcode\": \"wifi123\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/enrollment", "host": ["{{base_url}}"], "path": ["api", "enrollment"]}
+          },
+          "response": []
+        },
+        {
+          "name": "List All Enrollments",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/enrollments", "host": ["{{base_url}}"], "path": ["api", "enrollments"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Update Enrollment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Authorization", "value": "{{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"broker\": \"broker.hivemq.com\",\n    \"mqtt_username\": \"newuser\",\n    \"mqtt_password\": \"newpass\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/enrollment/{{mqtt_topic}}", "host": ["{{base_url}}"], "path": ["api", "enrollment", "{{mqtt_topic}}"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Get Devices by Topic",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/devices/{{mqtt_topic}}", "host": ["{{base_url}}"], "path": ["api", "devices", "{{mqtt_topic}}"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Rooms",
+      "description": "Room management endpoints",
+      "item": [
+        {
+          "name": "Create Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.room_id) {",
+                  "        pm.collectionVariables.set('room_id', jsonData.room_id);",
+                  "        console.log('Room ID saved:', jsonData.room_id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "A0_A1", "value": "800", "description": "Width in inches (bottom side)", "type": "text"},
+                {"key": "A1_A2", "value": "600", "description": "Height in inches (right side)", "type": "text"},
+                {"key": "A2_A3", "value": "800", "description": "Width in inches (top side)", "type": "text"},
+                {"key": "A3_A0", "value": "600", "description": "Height in inches (left side)", "type": "text"},
+                {"key": "label", "value": "Test Room", "description": "Room name/label", "type": "text"},
+                {"key": "mqtt_topic", "value": "{{mqtt_topic}}", "description": "Associated MQTT topic", "type": "text"},
+                {"key": "room_image", "value": "", "description": "Optional room floor plan image", "type": "file", "disabled": true}
+              ]
+            },
+            "url": {"raw": "{{base_url}}/api/rooms", "host": ["{{base_url}}"], "path": ["api", "rooms"]}
+          },
+          "response": []
+        },
+        {
+          "name": "List All Rooms",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/rooms", "host": ["{{base_url}}"], "path": ["api", "rooms"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Get Room Details",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/rooms/{{room_id}}", "host": ["{{base_url}}"], "path": ["api", "rooms", "{{room_id}}"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "label", "value": "Updated Room Name", "type": "text"},
+                {"key": "A0_A1", "value": "1000", "type": "text", "disabled": true},
+                {"key": "A1_A2", "value": "800", "type": "text", "disabled": true}
+              ]
+            },
+            "url": {"raw": "{{base_url}}/api/rooms/{{room_id}}", "host": ["{{base_url}}"], "path": ["api", "rooms", "{{room_id}}"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. MQTT Data",
+      "description": "MQTT data storage and retrieval",
+      "item": [
+        {
+          "name": "Store MQTT Data (No Auth)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"mqtt_topic\": \"{{mqtt_topic}}\",\n    \"tag_id\": 0,\n    \"ranges\": [50, 60, 70, 80, 0, 0, 0, 0]\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/mqtt/data", "host": ["{{base_url}}"], "path": ["api", "mqtt", "data"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Get MQTT Data by Topic",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/mqtt/data/{{mqtt_topic}}", "host": ["{{base_url}}"], "path": ["api", "mqtt", "data", "{{mqtt_topic}}"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Get Latest MQTT Data",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/mqtt/data/{{mqtt_topic}}/latest", "host": ["{{base_url}}"], "path": ["api", "mqtt", "data", "{{mqtt_topic}}", "latest"]}
+          },
+          "response": []
+        },
+        {
+          "name": "Get MQTT History",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {
+              "raw": "{{base_url}}/api/mqtt/data/{{mqtt_topic}}/history?limit=100",
+              "host": ["{{base_url}}"],
+              "path": ["api", "mqtt", "data", "{{mqtt_topic}}", "history"],
+              "query": [
+                {"key": "limit", "value": "100"},
+                {"key": "start_date", "value": "2026-01-01", "disabled": true},
+                {"key": "end_date", "value": "2026-12-31", "disabled": true}
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Dummy MQTT Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "{{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"mqtt_topic\": \"{{mqtt_topic}}\",\n    \"tag_count\": 3,\n    \"auto_enroll\": true\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/test/dummy-mqtt-data", "host": ["{{base_url}}"], "path": ["api", "test", "dummy-mqtt-data"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Visualization",
+      "description": "Position calculation and visualization",
+      "item": [
+        {
+          "name": "Visualize Positions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "{{token}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"room_id\": \"{{room_id}}\",\n    \"mqtt_topic\": \"{{mqtt_topic}}\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/visualize", "host": ["{{base_url}}"], "path": ["api", "visualize"]}
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. WebSocket (Socket.IO)",
+      "description": "## WebSocket Testing in Postman\n\n### How to Test Socket.IO in Postman:\n\n1. Click **New** → **Socket.IO Request**\n2. Enter URL: `http://15.204.231.252:8000`\n3. Go to **Events** tab and add listeners\n4. Click **Connect**\n5. Use **Message** tab to emit events\n\n### Connection Settings:\n- **URL**: http://15.204.231.252:8000\n- **Handshake Path**: /socket.io\n- **Client Version**: v4\n\n### Authentication:\nAdd to **Settings** → **Handshake** → **Auth**:\n```json\n{\"token\": \"YOUR_JWT_TOKEN\"}\n```\n\n### Events to Listen:\n- `connected` - Auth success\n- `position_update` - Real-time positions\n- `visualization_started` - Tracking started\n- `visualization_stopped` - Tracking stopped\n- `error` - Error messages\n\n### Events to Emit:\n- `start_visualization` with data: `{\"room_id\": \"...\", \"mqtt_topic\": \"...\", \"update_interval\": 0.5}`\n- `stop_visualization` (no data needed)",
+      "item": [
+        {
+          "name": "1. Get Token for WebSocket",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('token', jsonData.token);",
+                  "        console.log('=== WebSocket Token Ready ===');",
+                  "        console.log('Token:', jsonData.token);",
+                  "        console.log('');",
+                  "        console.log('=== Next Steps ===');",
+                  "        console.log('1. Create new Socket.IO request in Postman');",
+                  "        console.log('2. URL: http://15.204.231.252:8000');",
+                  "        console.log('3. Settings > Auth > Add: {\"token\": \"' + jsonData.token.substring(0,30) + '...\"}');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{test_email}}\",\n    \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": {"raw": "{{base_url}}/api/login", "host": ["{{base_url}}"], "path": ["api", "login"]},
+            "description": "Get a fresh token to use with WebSocket connection.\n\nAfter running this, copy the token from the response and use it in your Socket.IO connection."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Socket.IO Handshake Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}:8000/socket.io/?EIO=4&transport=polling&token={{token}}",
+              "host": ["{{base_url}}:8000"],
+              "path": ["socket.io", ""],
+              "query": [
+                {"key": "EIO", "value": "4"},
+                {"key": "transport", "value": "polling"},
+                {"key": "token", "value": "{{token}}"}
+              ]
+            },
+            "description": "Test the Socket.IO handshake. A successful response means the WebSocket server is running.\n\nExpected response starts with: `0{\"sid\":\"...`"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Test Room & Topic",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.rooms && jsonData.rooms.length > 0) {",
+                  "        var room = jsonData.rooms[0];",
+                  "        pm.collectionVariables.set('room_id', room.room_id);",
+                  "        pm.collectionVariables.set('mqtt_topic', room.mqtt_topic);",
+                  "        console.log('=== WebSocket Test Data Ready ===');",
+                  "        console.log('Room ID:', room.room_id);",
+                  "        console.log('MQTT Topic:', room.mqtt_topic);",
+                  "        console.log('Room Label:', room.label);",
+                  "        console.log('');",
+                  "        console.log('=== start_visualization payload ===');",
+                  "        console.log(JSON.stringify({room_id: room.room_id, mqtt_topic: room.mqtt_topic, update_interval: 0.5}, null, 2));",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "{{token}}"}],
+            "url": {"raw": "{{base_url}}/api/rooms", "host": ["{{base_url}}"], "path": ["api", "rooms"]},
+            "description": "Get your rooms to use in WebSocket visualization.\n\nThe console will show the exact payload to use with `start_visualization` event."
+          },
+          "response": []
+        },
+        {
+          "name": "README - WebSocket Setup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{base_url}}/", "host": ["{{base_url}}"], "path": [""]},
+            "description": "# WebSocket Testing Guide for Postman\n\n## Step 1: Get Your Token\nRun request \"1. Get Token for WebSocket\" to login and get a JWT token.\n\n## Step 2: Create Socket.IO Request\n1. Click **New** button (top left)\n2. Select **Socket.IO Request**\n3. Enter URL: `http://15.204.231.252:8000`\n\n## Step 3: Configure Authentication\n1. Click **Settings** tab\n2. Under **Handshake**, find **Auth**\n3. Enter:\n```json\n{\n    \"token\": \"YOUR_JWT_TOKEN_HERE\"\n}\n```\n\n## Step 4: Add Event Listeners\n1. Click **Events** tab\n2. Click **+ Add** and add these events:\n   - `connected`\n   - `position_update`\n   - `visualization_started`\n   - `visualization_stopped`\n   - `error`\n\n## Step 5: Connect\n1. Click **Connect** button\n2. You should see `connected` event with your email\n\n## Step 6: Start Visualization\n1. Click **Message** tab\n2. Event name: `start_visualization`\n3. Message (JSON):\n```json\n{\n    \"room_id\": \"YOUR_ROOM_ID\",\n    \"mqtt_topic\": \"YOUR_MQTT_TOPIC\",\n    \"update_interval\": 0.5\n}\n```\n4. Click **Send**\n\n## Step 7: Watch Position Updates\nYou'll see `position_update` events every 0.5 seconds with tag positions!\n\n## Step 8: Stop Visualization\n1. Event name: `stop_visualization`\n2. Message: `{}`\n3. Click **Send**"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+

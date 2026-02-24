@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UWB Position Tracking - Live Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: #1a1a2e; color: #eee; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #4ade80; text-align: center; margin-bottom: 30px; font-size: 28px; }
+        h3 { color: #94a3b8; margin-bottom: 15px; font-size: 16px; font-weight: 600; }
+        .section { background: #16213e; padding: 20px; margin: 15px 0; border-radius: 12px; border: 1px solid #334155; }
+        label { display: block; color: #94a3b8; margin-bottom: 5px; font-size: 14px; }
+        input { padding: 12px; margin: 5px 0 15px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; width: 100%; max-width: 500px; font-size: 14px; }
+        input:focus { outline: none; border-color: #4ade80; }
+        button { padding: 12px 24px; margin: 5px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s; }
+        .btn-primary { background: #4ade80; color: #000; }
+        .btn-primary:hover { background: #22c55e; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: #475569; color: #fff; }
+        .btn-secondary:hover { background: #64748b; }
+
+        #status { padding: 12px 20px; border-radius: 8px; margin: 15px 0; font-weight: 600; display: inline-block; }
+        .status-connected { background: #22c55e; color: #000; }
+        .status-disconnected { background: #ef4444; color: #fff; }
+        .status-connecting { background: #f59e0b; color: #000; }
+
+        #log { background: #0f172a; padding: 15px; height: 250px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 13px; border-radius: 8px; border: 1px solid #334155; }
+        .log-success { color: #4ade80; }
+        .log-error { color: #ef4444; }
+        .log-info { color: #60a5fa; }
+        .log-data { color: #fbbf24; }
+
+        #canvas-container { background: #0f172a; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
+        canvas { border: 2px solid #334155; border-radius: 8px; display: block; margin: 0 auto; }
+
+        .position-info { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; }
+        .tag-card { background: #1e293b; padding: 12px 18px; border-radius: 8px; border-left: 4px solid #ef4444; min-width: 180px; }
+        .tag-card h4 { margin: 0 0 8px 0; color: #f8fafc; font-size: 14px; }
+        .tag-card p { margin: 4px 0; color: #94a3b8; font-size: 13px; }
+        .tag-card .coords { color: #4ade80; font-weight: 600; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>UWB Position Tracking - Live Test</h1>
+
+        <div class="section">
+            <h3>Step 1: Connect to Server</h3>
+            <label for="token">JWT Authentication Token</label>
+            <input type="text" id="token" placeholder="Enter your JWT token" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6IndzdGVzdEB0ZXN0LmNvbSIsImV4cCI6MTc2NzY2ODE5N30.Ma738GfCJYyCgMg2mw4P6RCV0ldsmloODqJVdRKaeas">
+            <div>
+                <button class="btn-primary" onclick="connect()">Connect</button>
+                <button class="btn-danger" onclick="disconnect()">Disconnect</button>
+            </div>
+            <div id="status" class="status-disconnected">Not Connected</div>
+        </div>
+
+        <div class="section">
+            <h3>Step 2: Start Position Tracking</h3>
+            <div class="grid-2">
+                <div>
+                    <label for="room_id">Room ID</label>
+                    <input type="text" id="room_id" placeholder="Enter Room ID" value="695b28c8c5a4b6ab3a80cbab">
+                </div>
+                <div>
+                    <label for="mqtt_topic">MQTT Topic</label>
+                    <input type="text" id="mqtt_topic" placeholder="Enter MQTT Topic" value="5000001">
+                </div>
+            </div>
+            <button class="btn-primary" onclick="startVisualization()">Start Tracking</button>
+            <button class="btn-danger" onclick="stopVisualization()">Stop Tracking</button>
+        </div>
+
+        <div class="section">
+            <h3>Live Position Map</h3>
+            <div id="canvas-container">
+                <canvas id="positionCanvas" width="500" height="375"></canvas>
+            </div>
+            <div id="position-info" class="position-info"></div>
+        </div>
+
+        <div class="section">
+            <h3>Connection Log</h3>
+            <button class="btn-secondary" onclick="clearLog()">Clear Log</button>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        const SERVER_URL = 'http://15.204.231.252:8000';
+        const tagColors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+        let tagHistory = {};
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div class="log-${type}">[${time}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function updateStatus(state) {
+            const status = document.getElementById('status');
+            status.className = 'status-' + state;
+            const messages = {
+                'connected': 'Connected',
+                'disconnected': 'Not Connected',
+                'connecting': 'Connecting...'
+            };
+            status.textContent = messages[state] || state;
+        }
+
+        function connect() {
+            const token = document.getElementById('token').value;
+            if (!token) { log('Please enter a JWT token', 'error'); return; }
+
+            updateStatus('connecting');
+            log('Connecting to server...', 'info');
+
+            socket = io(SERVER_URL, {
+                auth: { token: token },
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                log('WebSocket connected successfully', 'success');
+                updateStatus('connected');
+            });
+
+            socket.on('connected', (data) => {
+                log('Authentication successful - User: ' + (data.email || 'unknown'), 'success');
+            });
+
+            socket.on('disconnect', () => {
+                log('Disconnected from server', 'error');
+                updateStatus('disconnected');
+            });
+
+            socket.on('connect_error', (error) => {
+                log('Connection failed: ' + error.message, 'error');
+                updateStatus('disconnected');
+            });
+
+            socket.on('error', (data) => {
+                log('Server error: ' + (data.msg || JSON.stringify(data)), 'error');
+            });
+
+            socket.on('visualization_started', (data) => {
+                log('Position tracking started - Room: ' + data.room_id, 'success');
+            });
+
+            socket.on('visualization_stopped', (data) => {
+                log('Position tracking stopped', 'info');
+            });
+
+            socket.on('position_update', (data) => {
+                const tagCount = Object.keys(data.tag_positions || {}).length;
+                log('Position update received - ' + tagCount + ' tags detected', 'data');
+                drawPositions(data);
+                updatePositionInfo(data);
+            });
+        }
+
+        function disconnect() {
+            if (socket) { socket.disconnect(); socket = null; }
+            updateStatus('disconnected');
+            log('Disconnected by user', 'info');
+            tagHistory = {};
+        }
+
+        function startVisualization() {
+            if (!socket || !socket.connected) { log('Please connect first', 'error'); return; }
+            const room_id = document.getElementById('room_id').value;
+            const mqtt_topic = document.getElementById('mqtt_topic').value;
+            if (!room_id || !mqtt_topic) { log('Please enter Room ID and MQTT Topic', 'error'); return; }
+
+            tagHistory = {};
+            socket.emit('start_visualization', { room_id, mqtt_topic, update_interval: 0.5 });
+            log('Starting position tracking...', 'info');
+        }
+
+        function stopVisualization() {
+            if (socket && socket.connected) {
+                socket.emit('stop_visualization');
+                log('Stopping position tracking...', 'info');
+            }
+        }
+
+        function updatePositionInfo(data) {
+            const container = document.getElementById('position-info');
+            let html = '';
+            const tags = data.tag_positions || {};
+
+            for (const [tagId, tag] of Object.entries(tags)) {
+                const color = tagColors[parseInt(tagId) % tagColors.length];
+                html += `
+                    <div class="tag-card" style="border-left-color: ${color}">
+                        <h4>Tag ${tagId}</h4>
+                        <p>Position: <span class="coords">${tag.x?.toFixed(1) || 'N/A'}, ${tag.y?.toFixed(1) || 'N/A'}</span></p>
+                        <p>Normalized: ${(tag.x_normalized * 100)?.toFixed(1) || 0}%, ${(tag.y_normalized * 100)?.toFixed(1) || 0}%</p>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function drawPositions(data) {
+            const canvas = document.getElementById('positionCanvas');
+            const ctx = canvas.getContext('2d');
+            const dims = data.room_dimensions_in || {};
+            const padding = 30;
+            const drawWidth = canvas.width - 2 * padding;
+            const drawHeight = canvas.height - 2 * padding;
+            const scaleX = drawWidth / (dims.width_in || 1);
+            const scaleY = drawHeight / (dims.height_in || 1);
+
+            // Clear canvas
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                const x = padding + (drawWidth * i / 10);
+                const y = padding + (drawHeight * i / 10);
+                ctx.beginPath(); ctx.moveTo(x, padding); ctx.lineTo(x, canvas.height - padding); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(canvas.width - padding, y); ctx.stroke();
+            }
+
+            // Draw room border
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(padding, padding, drawWidth, drawHeight);
+
+            // Draw anchors (blue squares)
+            ctx.fillStyle = '#3b82f6';
+            const anchors = data.anchor_positions || {};
+            ctx.font = 'bold 12px Segoe UI';
+            for (const [name, pos] of Object.entries(anchors)) {
+                const x = padding + pos.x * scaleX;
+                const y = canvas.height - padding - pos.y * scaleY;
+                ctx.fillRect(x - 6, y - 6, 12, 12);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText(name, x - 10, y - 12);
+                ctx.fillStyle = '#3b82f6';
+            }
+
+            // Draw tags with trails
+            const tags = data.tag_positions || {};
+            for (const [tagId, tag] of Object.entries(tags)) {
+                if (tag.x !== null && tag.y !== null) {
+                    const x = padding + tag.x * scaleX;
+                    const y = canvas.height - padding - tag.y * scaleY;
+                    const color = tagColors[parseInt(tagId) % tagColors.length];
+
+                    // Store history for trail
+                    if (!tagHistory[tagId]) tagHistory[tagId] = [];
+                    tagHistory[tagId].push({x, y});
+                    if (tagHistory[tagId].length > 20) tagHistory[tagId].shift();
+
+                    // Draw trail
+                    if (tagHistory[tagId].length > 1) {
+                        ctx.strokeStyle = color + '40';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(tagHistory[tagId][0].x, tagHistory[tagId][0].y);
+                        for (let i = 1; i < tagHistory[tagId].length; i++) {
+                            ctx.lineTo(tagHistory[tagId][i].x, tagHistory[tagId][i].y);
+                        }
+                        ctx.stroke();
+                    }
+
+                    // Draw tag dot
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // Draw label
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 11px Segoe UI';
+                    ctx.fillText('Tag ' + tagId, x + 12, y + 4);
+                }
+            }
+        }
+
+        // Initialize canvas on load
+        window.onload = function() {
+            const canvas = document.getElementById('positionCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#475569';
+            ctx.font = '14px Segoe UI';
+            ctx.fillText('Click "Start Tracking" to see live positions', 130, 190);
+        };
+    </script>
+</body>
+</html>
+

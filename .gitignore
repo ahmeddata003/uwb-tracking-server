@@ -1,0 +1,7 @@
+myprojectenv/
+__pycache__/
+*.pyc
+*.sock
+*.log
+uploads/
+.env
