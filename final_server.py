@@ -1958,11 +1958,14 @@ def get_mqtt_history(mqtt_topic):
 
     # Add room info if available
     if room:
+        image_file = room.get("image_file")
         response["room"] = {
             "room_id": str(room.get("_id")),
             "label": room.get("label"),
             "width_in": room.get("width_in"),
-            "height_in": room.get("height_in")
+            "height_in": room.get("height_in"),
+            "image_file": image_file,
+            "image_url": f"http://{get_server_ip()}/uploads/{image_file}" if image_file else None
         }
 
     return jsonify(response), 200
