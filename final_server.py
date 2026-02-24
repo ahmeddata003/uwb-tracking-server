@@ -1971,6 +1971,190 @@ def get_mqtt_history(mqtt_topic):
     return jsonify(response), 200
 
 
+@app.route("/api/mqtt/data/<mqtt_topic>/history/by-date", methods=["GET"])
+def get_mqtt_history_by_date(mqtt_topic):
+    """
+    Get historical MQTT data filtered by a specific date and optional hour.
+
+    Query Parameters:
+    - date (required): Date in YYYY-MM-DD format (e.g., "2026-02-24")
+    - hour (optional): Hour 0-23 to filter a specific hour of that date
+    - tag_id (optional): Filter by specific tag ID (e.g., 0, 1, 2)
+    - page (optional): Page number (default: 1)
+    - per_page (optional): Records per page (default: 100, max: 1000)
+    - include_positions (optional): Include calculated x,y positions (default: true)
+    """
+    token = request.headers.get("Authorization")
+    if not token:
+        return jsonify({"msg": "Missing token"}), 401
+
+    decoded = decode_token(token)
+    if not decoded:
+        return jsonify({"msg": "Invalid or expired token"}), 401
+
+    email = decoded["email"]
+
+    if not validate_7_digit_uuid(mqtt_topic):
+        return jsonify({"msg": "Invalid MQTT topic. Must be a 7-digit number"}), 400
+
+    user_enrollment = enrollments_collection.find_one({"email": email, "mqtt_topic": mqtt_topic})
+    if not user_enrollment:
+        return jsonify({"msg": "You don't have access to this MQTT topic"}), 403
+
+    # --- Parameters ---
+    date_str      = request.args.get("date")
+    hour          = request.args.get("hour", type=int)
+    tag_id        = request.args.get("tag_id", type=int)
+    page          = max(1, request.args.get("page", 1, type=int))
+    per_page      = min(1000, max(1, request.args.get("per_page", 100, type=int)))
+    include_positions = request.args.get("include_positions", "true").lower() == "true"
+
+    if not date_str:
+        return jsonify({"msg": "date is required (format: YYYY-MM-DD)"}), 400
+
+    try:
+        parsed_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"msg": "Invalid date format. Use YYYY-MM-DD"}), 400
+
+    if hour is not None and not (0 <= hour <= 23):
+        return jsonify({"msg": "hour must be between 0 and 23"}), 400
+
+    # Build time window
+    if hour is not None:
+        range_start = parsed_date.replace(hour=hour, minute=0, second=0, microsecond=0)
+        range_end   = parsed_date.replace(hour=hour, minute=59, second=59, microsecond=999999)
+    else:
+        range_start = parsed_date.replace(hour=0,  minute=0,  second=0,  microsecond=0)
+        range_end   = parsed_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    date_filter = {"$gte": range_start, "$lte": range_end}
+
+    query = {
+        "$and": [
+            {"$or": [{"mqtt_topic": mqtt_topic}, {"topic": mqtt_topic}]},
+            {"$or": [{"ts": date_filter}, {"received_at": date_filter}]}
+        ]
+    }
+
+    total_count = mqtt_data_collection.count_documents(query)
+    total_pages = math.ceil(total_count / per_page) if total_count > 0 else 1
+    skip = (page - 1) * per_page
+
+    mqtt_records = list(mqtt_data_collection.find(query)
+                        .sort([("ts", -1), ("received_at", -1)])
+                        .skip(skip).limit(per_page))
+
+    room = rooms_collection.find_one({"mqtt_topic": mqtt_topic, "email": email})
+
+    results = []
+    for record in mqtt_records:
+        data_str = record.get("data") or record.get("message", "")
+        parsed_tag_id = None
+        ranges = []
+
+        if data_str:
+            try:
+                tag_info = json.loads(data_str)
+                parsed_tag_id = tag_info.get("id")
+                ranges = tag_info.get("range", [])
+            except (json.JSONDecodeError, ValueError, TypeError):
+                pass
+
+        if tag_id is not None and parsed_tag_id != tag_id:
+            continue
+
+        timestamp = record.get("ts") or record.get("received_at") or record.get("timestamp")
+        timestamp_str = timestamp.isoformat() if hasattr(timestamp, "isoformat") else str(timestamp) if timestamp else None
+
+        item = {
+            "record_id": str(record.get("_id")),
+            "tag_id": parsed_tag_id,
+            "ranges": {
+                "A0": ranges[0] if len(ranges) > 0 else None,
+                "A1": ranges[1] if len(ranges) > 1 else None,
+                "A2": ranges[2] if len(ranges) > 2 else None,
+                "A3": ranges[3] if len(ranges) > 3 else None
+            },
+            "raw_ranges": ranges,
+            "timestamp": timestamp_str
+        }
+
+        if include_positions and room and len(ranges) >= 4:
+            width  = float(room.get("width_in", 0))
+            height = float(room.get("height_in", 0))
+            if width > 0 and height > 0:
+                anchor_positions = [(0,0),(width,0),(width,height),(0,height)]
+                distances = [(i, r) for i, r in enumerate(ranges[:4]) if r > 0]
+                if len(distances) >= 3:
+                    distances.sort(key=lambda x: x[1])
+                    sel = [distances[i][0] for i in range(3)]
+                    xs, ys, cnt = 0.0, 0.0, 0
+                    for i in range(3):
+                        for j in range(i+1, 3):
+                            ax, ay = anchor_positions[sel[i]]
+                            bx, by = anchor_positions[sel[j]]
+                            tx, ty = three_point_calculation(ax, ay, bx, by, ranges[sel[i]], ranges[sel[j]])
+                            xs += tx; ys += ty; cnt += 1
+                    if cnt > 0:
+                        x = max(0.0, min(width,  xs / cnt))
+                        y = max(0.0, min(height, ys / cnt))
+                        item["position"] = {
+                            "x": round(x, 2),
+                            "y": round(y, 2),
+                            "x_normalized": round(x / width,  4),
+                            "y_normalized": round(y / height, 4),
+                            "selected_anchors": [f"A{i}" for i in sel]
+                        }
+                    else:
+                        item["position"] = None
+                else:
+                    item["position"] = None
+            else:
+                item["position"] = None
+        elif include_positions:
+            item["position"] = None
+
+        results.append(item)
+
+    response = {
+        "mqtt_topic": mqtt_topic,
+        "data": results,
+        "count": len(results),
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total_records": total_count,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1
+        },
+        "filters": {
+            "date": date_str,
+            "hour": hour,
+            "time_window": {
+                "from": range_start.isoformat(),
+                "to":   range_end.isoformat()
+            },
+            "tag_id": tag_id,
+            "include_positions": include_positions
+        }
+    }
+
+    if room:
+        image_file = room.get("image_file")
+        response["room"] = {
+            "room_id": str(room.get("_id")),
+            "label": room.get("label"),
+            "width_in": room.get("width_in"),
+            "height_in": room.get("height_in"),
+            "image_file": image_file,
+            "image_url": f"http://{get_server_ip()}/uploads/{image_file}" if image_file else None
+        }
+
+    return jsonify(response), 200
+
+
 
 
 # ====== INITIALIZATION ======
