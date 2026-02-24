@@ -1523,6 +1523,7 @@ def visualize_position():
             "width_in": width,
             "height_in": height
         },
+        "image_url": f"http://{get_server_ip()}/uploads/{room.get('image_file')}" if room.get("image_file") else None,
         "anchor_positions": {
             "A0": {"x": 0, "y": 0},
             "A1": {"x": width, "y": 0},
@@ -2344,11 +2345,13 @@ def handle_start_visualization(data):
     conn["update_interval"] = update_interval
     conn["room"] = room
     
+    image_file = room.get("image_file")
     emit('visualization_started', {
         'msg': 'Visualization started',
         'room_id': room_id,
         'mqtt_topic': mqtt_topic,
-        'update_interval': update_interval
+        'update_interval': update_interval,
+        'image_url': f"http://{get_server_ip()}/uploads/{image_file}" if image_file else None
     })
 
     # Capture sid before starting thread (request context won't be available in thread)
@@ -2375,6 +2378,7 @@ def handle_start_visualization(data):
                     width = float(room_data.get("width_in", 0))
                     height = float(room_data.get("height_in", 0))
 
+                    img_file = room_data.get("image_file")
                     socketio.emit('position_update', {
                         'timestamp': datetime.datetime.utcnow().isoformat(),
                         'room_id': conn["room_id"],
@@ -2383,6 +2387,7 @@ def handle_start_visualization(data):
                             'width_in': width,
                             'height_in': height
                         },
+                        'image_url': f"http://{get_server_ip()}/uploads/{img_file}" if img_file else None,
                         'anchor_positions': {
                             'A0': {'x': 0, 'y': 0},
                             'A1': {'x': width, 'y': 0},
