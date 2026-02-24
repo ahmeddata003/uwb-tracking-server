@@ -1975,11 +1975,12 @@ def get_mqtt_history(mqtt_topic):
 @app.route("/api/mqtt/data/<mqtt_topic>/history/by-date", methods=["GET"])
 def get_mqtt_history_by_date(mqtt_topic):
     """
-    Get historical MQTT data filtered by a specific date and optional hour.
+    Get historical MQTT data filtered by date, optional hour, and optional minute.
 
     Query Parameters:
     - date (required): Date in YYYY-MM-DD format (e.g., "2026-02-24")
-    - hour (optional): Hour 0-23 to filter a specific hour of that date
+    - hour (optional): Hour 0-23 — narrows to that hour window
+    - minute (optional): Minute 0-59 — requires hour; narrows to that 1-minute window
     - tag_id (optional): Filter by specific tag ID (e.g., 0, 1, 2)
     - page (optional): Page number (default: 1)
     - per_page (optional): Records per page (default: 100, max: 1000)
@@ -2005,6 +2006,7 @@ def get_mqtt_history_by_date(mqtt_topic):
     # --- Parameters ---
     date_str      = request.args.get("date")
     hour          = request.args.get("hour", type=int)
+    minute        = request.args.get("minute", type=int)
     tag_id        = request.args.get("tag_id", type=int)
     page          = max(1, request.args.get("page", 1, type=int))
     per_page      = min(1000, max(1, request.args.get("per_page", 100, type=int)))
@@ -2021,11 +2023,23 @@ def get_mqtt_history_by_date(mqtt_topic):
     if hour is not None and not (0 <= hour <= 23):
         return jsonify({"msg": "hour must be between 0 and 23"}), 400
 
+    if minute is not None and hour is None:
+        return jsonify({"msg": "hour is required when using minute filter"}), 400
+
+    if minute is not None and not (0 <= minute <= 59):
+        return jsonify({"msg": "minute must be between 0 and 59"}), 400
+
     # Build time window
-    if hour is not None:
-        range_start = parsed_date.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if hour is not None and minute is not None:
+        # Exact 1-minute window
+        range_start = parsed_date.replace(hour=hour, minute=minute, second=0,  microsecond=0)
+        range_end   = parsed_date.replace(hour=hour, minute=minute, second=59, microsecond=999999)
+    elif hour is not None:
+        # Full hour window
+        range_start = parsed_date.replace(hour=hour, minute=0,  second=0,  microsecond=0)
         range_end   = parsed_date.replace(hour=hour, minute=59, second=59, microsecond=999999)
     else:
+        # Full day
         range_start = parsed_date.replace(hour=0,  minute=0,  second=0,  microsecond=0)
         range_end   = parsed_date.replace(hour=23, minute=59, second=59, microsecond=999999)
 
@@ -2133,6 +2147,7 @@ def get_mqtt_history_by_date(mqtt_topic):
         "filters": {
             "date": date_str,
             "hour": hour,
+            "minute": minute,
             "time_window": {
                 "from": range_start.isoformat(),
                 "to":   range_end.isoformat()

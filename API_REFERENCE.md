@@ -26,8 +26,7 @@
 4. [MQTT Data](#4-mqtt-data)
    - [Get Latest Data](#41-get-latest-data)
    - [History (Range Filter)](#42-history-range-filter)
-   - [History by Date](#43-history-by-date)
-   - [History by Date + Hour](#44-history-by-date--hour)
+   - [History by Date / Hour / Minute](#43-history-by-date)
 5. [Visualization](#5-visualization)
    - [REST: Compute Position](#51-rest-compute-position)
    - [WebSocket: Live Tracking](#52-websocket-live-tracking)
@@ -408,12 +407,71 @@ curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history?include_positio
 
 **GET** `/api/mqtt/data/<mqtt_topic>/history/by-date`
 
-Returns all data for a specific **date** (full 24 hours).
+Flexible time filter — supports date only, date + hour, or date + hour + minute.
+
+---
+
+#### By date only (full 24 hours)
 
 ```bash
 curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24" \
   -H "Authorization: YOUR_TOKEN"
 ```
+
+---
+
+#### By date + hour (1-hour window)
+
+```bash
+# hour=23 → 11:00 PM to 11:59 PM
+curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=23" \
+  -H "Authorization: YOUR_TOKEN"
+
+# hour=9 → 9:00 AM to 9:59 AM
+curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=9" \
+  -H "Authorization: YOUR_TOKEN"
+```
+
+---
+
+#### By date + hour + minute (1-minute window)
+
+```bash
+# hour=23, minute=45 → 11:45 PM to 11:45:59 PM
+curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=23&minute=45" \
+  -H "Authorization: YOUR_TOKEN"
+
+# With tag filter
+curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=23&minute=45&tag_id=1" \
+  -H "Authorization: YOUR_TOKEN"
+```
+
+---
+
+#### All parameters combined
+
+```bash
+curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=23&minute=45&tag_id=1&page=1&per_page=50" \
+  -H "Authorization: YOUR_TOKEN"
+```
+
+---
+
+**Query Parameters:**
+
+| Parameter | Required | Example | Description |
+|---|---|---|---|
+| `date` | ✅ | `2026-02-24` | Full day — `YYYY-MM-DD` |
+| `hour` | optional | `23` | Narrows to 1 hour (`0`–`23`) |
+| `minute` | optional | `45` | Narrows to 1 minute (`0`–`59`) — requires `hour` |
+| `tag_id` | optional | `1` | Filter by specific tag |
+| `page` | optional | `1` | Page number (default `1`) |
+| `per_page` | optional | `100` | Records per page (default `100`, max `1000`) |
+| `include_positions` | optional | `true` | Include X/Y calculation (default `true`) |
+
+> `minute` requires `hour` — returns error if used alone.
+
+---
 
 **Response `200`**
 ```json
@@ -424,7 +482,7 @@ curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=20
     {
       "record_id": "699df52faa1ac7a5a02e267e",
       "tag_id": 1,
-      "timestamp": "2026-02-24T23:59:59.623000",
+      "timestamp": "2026-02-24T23:45:32.623000",
       "ranges": { "A0": 65, "A1": 0, "A2": 95, "A3": 74 },
       "raw_ranges": [65, 0, 95, 74, 0, 0, 0, 0],
       "position": {
@@ -438,10 +496,11 @@ curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=20
   ],
   "filters": {
     "date": "2026-02-24",
-    "hour": null,
+    "hour": 23,
+    "minute": 45,
     "time_window": {
-      "from": "2026-02-24T00:00:00",
-      "to": "2026-02-24T23:59:59.999999"
+      "from": "2026-02-24T23:45:00",
+      "to": "2026-02-24T23:45:59.999999"
     },
     "tag_id": null,
     "include_positions": true
@@ -449,9 +508,9 @@ curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=20
   "pagination": {
     "page": 1,
     "per_page": 100,
-    "total_records": 1945,
-    "total_pages": 20,
-    "has_next": true,
+    "total_records": 87,
+    "total_pages": 1,
+    "has_next": false,
     "has_prev": false
   },
   "room": {
@@ -459,43 +518,11 @@ curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=20
     "label": "Main Hall",
     "width_in": 300.0,
     "height_in": 400.0,
-    "image_url": null
+    "image_url": "http://15.204.231.252/uploads/floorplan.jpg"
   }
 }
+
 ```
-
----
-
-### 4.4 History by Date + Hour
-
-**GET** `/api/mqtt/data/<mqtt_topic>/history/by-date?date=YYYY-MM-DD&hour=H`
-
-Returns data for a specific **1-hour window** (hour 0–23).
-
-```bash
-# Hour 23 = 11:00 PM to 11:59 PM
-curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=23" \
-  -H "Authorization: YOUR_TOKEN"
-
-# Hour 9 = 9:00 AM to 9:59 AM, tag 1 only
-curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=9&tag_id=1" \
-  -H "Authorization: YOUR_TOKEN"
-
-# Paginate through large hour
-curl -X GET "http://15.204.231.252/api/mqtt/data/1000002/history/by-date?date=2026-02-24&hour=23&page=2&per_page=200" \
-  -H "Authorization: YOUR_TOKEN"
-```
-
-**Query Parameters:**
-
-| Parameter | Required | Description |
-|---|---|---|
-| `date` | ✅ | `YYYY-MM-DD` format |
-| `hour` | optional | `0`–`23` (narrows to 1 hour window) |
-| `tag_id` | optional | Filter by specific tag |
-| `page` | optional | Page number (default `1`) |
-| `per_page` | optional | Records per page (default `100`, max `1000`) |
-| `include_positions` | optional | Include X/Y calculation (default `true`) |
 
 ---
 
